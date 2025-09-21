@@ -21,7 +21,7 @@ model = genai.GenerativeModel('gemini-1.5-flash-latest')
 def index():
     return render_template('index.html')
 
-# Ruta de la API que procesará la solicitud
+# Ruta de la API que procesará la solicitud principal
 @app.route('/get_weather_narrative', methods=['POST'])
 def get_weather_narrative():
     try:
@@ -72,24 +72,20 @@ def get_weather_narrative():
         ai_response = model.generate_content(full_prompt)
         narrative = ai_response.text
 
-        # --- 3. NUEVO: OBTENER Y PROCESAR LA PREVISIÓN PARA 5 DÍAS ---
+        # --- 3. OBTENER Y PROCESAR LA PREVISIÓN PARA 5 DÍAS ---
         forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={weather_api_key}&units=metric&lang=es"
         forecast_response = requests.get(forecast_url)
         forecast_response.raise_for_status()
         forecast_data = forecast_response.json()
         
         forecast_list = []
-        # Mapa para traducir los nombres de los días al español
         dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         
         for forecast in forecast_data['list']:
-            # Seleccionamos solo las previsiones del mediodía (12:00)
             if forecast['dt_txt'].endswith("12:00:00"):
                 timestamp = datetime.fromtimestamp(forecast['dt'])
-                # .weekday() devuelve 0 para Lunes, 1 para Martes...
                 day_name = dias_semana[timestamp.weekday()]
                 
-                # Evita añadir el día de hoy si ya es tarde
                 if timestamp.date() == datetime.today().date():
                     continue
 
@@ -99,7 +95,6 @@ def get_weather_narrative():
                     "icon": forecast['weather'][0]['icon']
                 })
         
-        # Nos aseguramos de tener solo los próximos 5 días
         processed_forecast = forecast_list[:5]
 
         # --- 4. DEVOLVER LA RESPUESTA COMBINADA ---
@@ -112,6 +107,53 @@ def get_weather_narrative():
         if err.response.status_code == 404:
             return jsonify({'error': f'No se pudo encontrar la ciudad: {city}. Por favor, verifica el nombre.'}), 404
         return jsonify({'error': f'Error al obtener los datos del tiempo: {str(err)}'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Ha ocurrido un error inesperado: {str(e)}'}), 500
+
+# --- ¡NUEVA RUTA AÑADIDA PARA LA NARRATIVA DIARIA! ---
+@app.route('/get_daily_narrative', methods=['POST'])
+def get_daily_narrative():
+    try:
+        data = request.get_json()
+        daily_data = data.get('daily_data')
+        personality = data.get('personality', 'alegre')
+
+        if not daily_data:
+            return jsonify({'error': 'Faltan los datos del día.'}), 400
+        
+        # Extraemos la información del día específico
+        day_name = daily_data.get('day')
+        temp = daily_data.get('temp')
+        icon_code = daily_data.get('icon')
+        
+        # Creamos un prompt específico para un día futuro
+        prompt_base = "Actúa como un meteorólogo carismático para 'eltiempo.ai'. Crea una narrativa breve (30-40 palabras) sobre la previsión del tiempo."
+        
+        prompt_modifiers = {
+            'alegre': "Usa un tono entusiasta y optimista sobre lo que se puede esperar.",
+            'poetico': "Describe la previsión de forma lírica, con metáforas y un lenguaje evocador.",
+            'tecnico': "Sé preciso y educativo, explicando por qué se espera ese tiempo.",
+            'sarcástico': "Utiliza un humor irónico sobre la previsión. Por ejemplo, si va a llover, 'prepárense para un día emocionante... bajo techo'.",
+            'para_ninos': "Explica la previsión como si hablaras con un niño, usando ejemplos sencillos y divertidos."
+        }
+        prompt_modifier = prompt_modifiers.get(personality, prompt_modifiers['alegre'])
+
+        full_prompt = f"""
+        {prompt_base}
+        
+        **Tono a utilizar**: {prompt_modifier}
+
+        La previsión para el próximo **{day_name}** indica una temperatura aproximada de **{temp}°C**.
+        El código del icono del tiempo es '{icon_code}' (úsalo para inferir si estará soleado, nublado, lluvioso, etc.).
+
+        Crea la narrativa para ese día futuro. Sé conciso y directo.
+        """
+        
+        ai_response = model.generate_content(full_prompt)
+        narrative = ai_response.text
+
+        return jsonify({'narrative': narrative})
+
     except Exception as e:
         return jsonify({'error': f'Ha ocurrido un error inesperado: {str(e)}'}), 500
 
