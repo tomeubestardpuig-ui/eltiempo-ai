@@ -102,7 +102,6 @@
         @keyframes fadeInForecast { from { opacity: 0; } to { opacity: 1; } }
         .forecast-day {
             background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 15px; padding: 15px 10px; flex-grow: 1; display: flex; flex-direction: column; align-items: center; gap: 8px;
-            /* --- ESTILOS CORREGIDOS --- */
             cursor: pointer; 
             transition: all 0.3s ease;
         }
@@ -111,7 +110,11 @@
             background: rgba(255, 255, 255, 0.2);
         }
         .forecast-day .day-name { font-weight: 600; font-size: 1em; }
-        .forecast-day .weather-icon { font-size: 2em; color: var(--accent-color); }
+        /* --- NUEVO ESTILO PARA EL ICONO DEL TIEMPO --- */
+        .forecast-day .weather-icon {
+            font-size: 2em;
+            color: var(--accent-color);
+        }
         .forecast-day .temp { font-size: 1.1em; font-weight: 700; }
         
         .instagram-btn {
@@ -126,11 +129,10 @@
         }
         #readAloudBtn:hover { background: rgba(255, 255, 255, 0.4); transform: scale(1.1); }
 
-        /* --- ESTILOS PARA EL MODAL (Sin cambios) --- */
         .modal {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background-color: rgba(0, 0, 0, 0.6);
-            display: none; /* Oculto por defecto */
+            display: none;
             align-items: center; justify-content: center;
             z-index: 1000;
             backdrop-filter: blur(5px);
@@ -158,7 +160,6 @@
             display: none;
         }
 
-        /* --- MEDIA QUERIES --- */
         @media (max-width: 768px) {
             h1 { font-size: 2.2em; } p { font-size: 1em; }
             .logo { width: 170px; height: 170px; }
@@ -178,22 +179,20 @@
         document.addEventListener('DOMContentLoaded', () => {
             const cityInput = document.getElementById('cityInput');
             const submitButton = document.getElementById('submitBtn');
-            const voiceInputBtn = document.getElementById('voiceInputBtn');
-            // --- CORREGIDO: Obtenemos los elementos del modal ---
             const modal = document.getElementById('narrative-modal');
             const modalCloseBtn = document.getElementById('modal-close-btn');
 
             submitButton.addEventListener('click', getWeather);
             cityInput.addEventListener("keyup", (event) => { if (event.key === "Enter") getWeather(); });
             
-            // --- CORREGIDO: Añadimos los listeners para cerrar el modal ---
             modalCloseBtn.addEventListener('click', () => modal.classList.remove('active'));
             modal.addEventListener('click', (e) => {
                 if (e.target === modal) modal.classList.remove('active');
             });
             
-            // --- Lógica de Speech Recognition (sin cambios) ---
+            // Lógica de Speech Recognition
             if ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window) {
+                const voiceInputBtn = document.getElementById('voiceInputBtn');
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
                 const recognition = new SpeechRecognition();
                 recognition.lang = 'es-ES';
@@ -209,10 +208,24 @@
             }
         });
 
-        function readNarrative() { /* ... (función sin cambios) ... */ }
-        function mapWeatherIcon(iconCode) { /* ... (función sin cambios) ... */ }
+        function readNarrative() { /* ... (código sin cambios) ... */ }
 
-        // --- Nueva función para la narrativa diaria (sin cambios) ---
+        // --- NUEVA FUNCIÓN PARA MAPEAR ICONOS ---
+        function mapWeatherIcon(iconCode) {
+            const iconMap = {
+                '01d': 'fas fa-sun', '01n': 'fas fa-moon',
+                '02d': 'fas fa-cloud-sun', '02n': 'fas fa-cloud-moon',
+                '03d': 'fas fa-cloud', '03n': 'fas fa-cloud',
+                '04d': 'fas fa-cloud-meatball', '04n': 'fas fa-cloud-meatball', // Nubes más densas
+                '09d': 'fas fa-cloud-showers-heavy', '09n': 'fas fa-cloud-showers-heavy',
+                '10d': 'fas fa-cloud-sun-rain', '10n': 'fas fa-cloud-moon-rain',
+                '11d': 'fas fa-bolt', '11n': 'fas fa-bolt',
+                '13d': 'fas fa-snowflake', '13n': 'fas fa-snowflake',
+                '50d': 'fas fa-smog', '50n': 'fas fa-smog'
+            };
+            return iconMap[iconCode] || 'fas fa-question-circle'; // Un icono por defecto si no se encuentra
+        }
+
         async function getDailyNarrative(dayData) {
             const modal = document.getElementById('narrative-modal');
             const modalContent = document.getElementById('modal-narrative-content');
@@ -291,12 +304,15 @@
                             data.forecast.forEach(day => {
                                 const dayElement = document.createElement('div');
                                 dayElement.className = 'forecast-day';
+
+                                // --- MODIFICADO: Usamos la función para obtener el icono ---
+                                const iconClass = mapWeatherIcon(day.icon);
+                                
                                 dayElement.innerHTML = `
                                     <div class="day-name">${day.day}</div>
-                                    <i class="weather-icon ${mapWeatherIcon(day.icon)}"></i>
+                                    <i class="weather-icon ${iconClass}"></i>
                                     <div class="temp">${Math.round(day.temp)}°</div>
                                 `;
-                                // --- CORREGIDO: Añadimos el listener para que se pueda hacer clic ---
                                 dayElement.addEventListener('click', () => getDailyNarrative(day));
                                 forecastContainer.appendChild(dayElement);
                             });
@@ -353,7 +369,6 @@
         </a>
     </div>
 
-    <!-- CORREGIDO: Estructura del Modal añadida al final del body -->
     <div class="modal" id="narrative-modal">
         <div class="modal-content">
             <button class="modal-close-btn" id="modal-close-btn">&times;</button>
@@ -364,4 +379,3 @@
 
 </body>
 </html>
-```
