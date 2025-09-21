@@ -1,6 +1,6 @@
 import os
 import requests
-import google.generativeai as genai
+import google.generativai as genai
 from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 from datetime import datetime
@@ -12,7 +12,6 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configurar la API de Google Gemini
-# Asegúrate de que la clave GEMINI_API_KEY está en tu archivo .env
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
@@ -37,10 +36,9 @@ def get_weather_narrative():
         # --- 1. OBTENER DATOS DEL TIEMPO ACTUAL ---
         current_weather_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_api_key}&units=metric&lang=es"
         weather_response = requests.get(current_weather_url)
-        weather_response.raise_for_status() # Lanza un error si la petición falla
+        weather_response.raise_for_status()
         weather_data = weather_response.json()
 
-        # Extraer datos actuales y coordenadas para la siguiente llamada
         description = weather_data['weather'][0]['description']
         temp = weather_data['main']['temp']
         feels_like = weather_data['main']['feels_like']
@@ -49,9 +47,8 @@ def get_weather_narrative():
         lat = weather_data['coord']['lat']
         lon = weather_data['coord']['lon']
 
-        # --- 2. GENERAR NARRATIVA CON IA (Como antes) ---
+        # --- 2. GENERAR NARRATIVA CON IA ---
         prompt_base = "Actúa como un meteorólogo carismático y creativo para 'eltiempo.ai'. Transforma datos técnicos en una narrativa breve (40-50 palabras)."
-        
         prompt_modifiers = {
             'alegre': "Usa un tono muy entusiasta y optimista. ¡Haz que el día suene genial!",
             'poetico': "Describe el tiempo de forma lírica, con metáforas y un lenguaje evocador.",
@@ -81,14 +78,16 @@ def get_weather_narrative():
         forecast_list = []
         dias_semana = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
         
+        processed_dates = []
         for forecast in forecast_data['list']:
-            if forecast['dt_txt'].endswith("12:00:00"):
-                timestamp = datetime.fromtimestamp(forecast['dt'])
-                day_name = dias_semana[timestamp.weekday()]
-                
+            timestamp = datetime.fromtimestamp(forecast['dt'])
+            if forecast['dt_txt'].endswith("12:00:00") and timestamp.date() not in processed_dates:
                 if timestamp.date() == datetime.today().date():
                     continue
-
+                
+                processed_dates.append(timestamp.date())
+                day_name = dias_semana[timestamp.weekday()]
+                
                 forecast_list.append({
                     "day": day_name,
                     "temp": forecast['main']['temp'],
@@ -110,7 +109,7 @@ def get_weather_narrative():
     except Exception as e:
         return jsonify({'error': f'Ha ocurrido un error inesperado: {str(e)}'}), 500
 
-# --- ¡NUEVA RUTA AÑADIDA PARA LA NARRATIVA DIARIA! ---
+# --- RUTA PARA LA NARRATIVA DIARIA (CON PROMPT CORREGIDO) ---
 @app.route('/get_daily_narrative', methods=['POST'])
 def get_daily_narrative():
     try:
@@ -121,12 +120,10 @@ def get_daily_narrative():
         if not daily_data:
             return jsonify({'error': 'Faltan los datos del día.'}), 400
         
-        # Extraemos la información del día específico
         day_name = daily_data.get('day')
         temp = daily_data.get('temp')
         icon_code = daily_data.get('icon')
         
-        # Creamos un prompt específico para un día futuro
         prompt_base = "Actúa como un meteorólogo carismático para 'eltiempo.ai'. Crea una narrativa breve (30-40 palabras) sobre la previsión del tiempo."
         
         prompt_modifiers = {
@@ -138,13 +135,15 @@ def get_daily_narrative():
         }
         prompt_modifier = prompt_modifiers.get(personality, prompt_modifiers['alegre'])
 
+        # --- INSTRUCCIÓN CORREGIDA ---
+        # Ahora le prohibimos explícitamente mencionar el código.
         full_prompt = f"""
         {prompt_base}
         
         **Tono a utilizar**: {prompt_modifier}
 
         La previsión para el próximo **{day_name}** indica una temperatura aproximada de **{temp}°C**.
-        El código del icono del tiempo es '{icon_code}' (úsalo para inferir si estará soleado, nublado, lluvioso, etc.).
+        El código interno del icono del tiempo es '{icon_code}'. Usa este código para inferir si estará soleado (01d), nublado (03d), lluvioso (10d), etc., pero **nunca menciones el código en tu respuesta final**. Describe el tiempo de forma visual.
 
         Crea la narrativa para ese día futuro. Sé conciso y directo.
         """
