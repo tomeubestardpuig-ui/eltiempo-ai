@@ -1,3 +1,6 @@
+import sys
+venv_path = '/opt/render/project/src/.venv/lib/python3.11/site-packages'
+sys.path.insert(0, venv_path)
 import os
 import requests
 import google.generativai as genai
@@ -12,6 +15,7 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configurar la API de Google Gemini
+# Asegúrate de que la clave GEMINI_API_KEY está en tu archivo .env
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
@@ -109,7 +113,7 @@ def get_weather_narrative():
     except Exception as e:
         return jsonify({'error': f'Ha ocurrido un error inesperado: {str(e)}'}), 500
 
-# --- RUTA PARA LA NARRATIVA DIARIA (CON PROMPT CORREGIDO) ---
+# --- RUTA PARA LA NARRATIVA DIARIA ---
 @app.route('/get_daily_narrative', methods=['POST'])
 def get_daily_narrative():
     try:
@@ -135,8 +139,6 @@ def get_daily_narrative():
         }
         prompt_modifier = prompt_modifiers.get(personality, prompt_modifiers['alegre'])
 
-        # --- INSTRUCCIÓN CORREGIDA ---
-        # Ahora le prohibimos explícitamente mencionar el código.
         full_prompt = f"""
         {prompt_base}
         
