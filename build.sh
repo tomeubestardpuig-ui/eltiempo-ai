@@ -1,10 +1,9 @@
-#!/usr/bin/env bash
-set -o errexit
+ #!/usr/bin/env bash
+    set -o errexit
 
-python3 -m venv .venv
-source .venv/bin/activate
-pip install --upgrade pip
-pip install -r requirements.txt
+    pip install --upgrade pip
+    pip install -r requirements.txt
 
-# ¡NUEVA LÍNEA IMPORTANTE! Le da permiso de ejecución al script de arranque.
-chmod +x ./start.sh
+    echo "--- [BUILD SCRIPT] INSTALACIÓN COMPLETA ---"
+    echo "--- [BUILD SCRIPT] Listando contenido de site-packages para depuración:"
+    ls -l .venv/lib/python3.11/site-packages/

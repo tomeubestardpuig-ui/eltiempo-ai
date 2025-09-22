@@ -1,6 +1,12 @@
 import sys
-venv_path = '/opt/render/project/src/.venv/lib/python3.11/site-packages'
-sys.path.insert(0, venv_path)
+import pprint
+
+print("--- [APP.PY] INICIANDO SCRIPT ---")
+print("--- [APP.PY] Python está buscando módulos en estas carpetas:")
+pprint.pprint(sys.path)
+print("--- [APP.PY] Intentando importar 'google.generativai'... ---")
+
+# El resto de tu código original continúa aquí sin cambios
 import os
 import requests
 import google.generativai as genai
@@ -8,6 +14,7 @@ from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 from datetime import datetime
 
+# (El resto de tu código va aquí...)
 # Cargar variables de entorno (las API keys)
 load_dotenv()
 
