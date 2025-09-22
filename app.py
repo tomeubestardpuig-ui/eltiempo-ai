@@ -1,12 +1,3 @@
-import sys
-import pprint
-
-print("--- [APP.PY] INICIANDO SCRIPT ---")
-print("--- [APP.PY] Python está buscando módulos en estas carpetas:")
-pprint.pprint(sys.path)
-print("--- [APP.PY] Intentando importar 'google.generativai'... ---")
-
-# El resto de tu código original continúa aquí sin cambios
 import os
 import requests
 import google.generativai as genai
@@ -14,7 +5,6 @@ from flask import Flask, request, jsonify, render_template
 from dotenv import load_dotenv
 from datetime import datetime
 
-# (El resto de tu código va aquí...)
 # Cargar variables de entorno (las API keys)
 load_dotenv()
 
@@ -22,10 +12,10 @@ load_dotenv()
 app = Flask(__name__)
 
 # Configurar la API de Google Gemini
-# Asegúrate de que la clave GEMINI_API_KEY está en tu archivo .env
 genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model = genai.GenerativeModel('gemini-1.5-flash-latest')
 
+# (El resto de tu código continúa aquí sin cambios...)
 # Ruta principal que muestra la página web
 @app.route('/')
 def index():
@@ -44,7 +34,6 @@ def get_weather_narrative():
         
         weather_api_key = os.getenv('OPENWEATHER_API_KEY')
         
-        # --- 1. OBTENER DATOS DEL TIEMPO ACTUAL ---
         current_weather_url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={weather_api_key}&units=metric&lang=es"
         weather_response = requests.get(current_weather_url)
         weather_response.raise_for_status()
@@ -52,20 +41,16 @@ def get_weather_narrative():
 
         description = weather_data['weather'][0]['description']
         temp = weather_data['main']['temp']
-        feels_like = weather_data['main']['feels_like']
-        humidity = weather_data['main']['humidity']
-        wind_speed = weather_data['wind']['speed']
         lat = weather_data['coord']['lat']
         lon = weather_data['coord']['lon']
 
-        # --- 2. GENERAR NARRATIVA CON IA ---
         prompt_base = "Actúa como un meteorólogo carismático y creativo para 'eltiempo.ai'. Transforma datos técnicos en una narrativa breve (40-50 palabras)."
         prompt_modifiers = {
-            'alegre': "Usa un tono muy entusiasta y optimista. ¡Haz que el día suene genial!",
-            'poetico': "Describe el tiempo de forma lírica, con metáforas y un lenguaje evocador.",
-            'tecnico': "Sé preciso y educativo. Explica la situación con términos meteorológicos pero de forma comprensible.",
-            'sarcástico': "Utiliza un humor irónico y un poco cínico para describir el tiempo. Sé divertido.",
-            'para_ninos': "Explica el tiempo como si hablaras con un niño de 6 años, con ejemplos sencillos y animados."
+            'alegre': "Usa un tono muy entusiasta y optimista.",
+            'poetico': "Describe el tiempo de forma lírica.",
+            'tecnico': "Sé preciso y educativo.",
+            'sarcástico': "Utiliza un humor irónico.",
+            'para_ninos': "Explica el tiempo como si hablaras con un niño."
         }
         prompt_modifier = prompt_modifiers.get(personality, prompt_modifiers['alegre'])
 
@@ -73,14 +58,12 @@ def get_weather_narrative():
         {prompt_base}
         **Tono a utilizar**: {prompt_modifier}
         Basado en los siguientes datos para {city}:
-        - Condición: {description}, Temperatura: {temp}°C, Sensación: {feels_like}°C.
-        - Humedad: {humidity}% y Viento: {wind_speed} m/s (intégralos en la narrativa sin mencionar los valores exactos).
+        - Condición: {description}, Temperatura: {temp}°C.
         Crea el pronóstico narrativo. Sé conciso y no repitas el nombre de la ciudad.
         """
         ai_response = model.generate_content(full_prompt)
         narrative = ai_response.text
 
-        # --- 3. OBTENER Y PROCESAR LA PREVISIÓN PARA 5 DÍAS ---
         forecast_url = f"http://api.openweathermap.org/data/2.5/forecast?lat={lat}&lon={lon}&appid={weather_api_key}&units=metric&lang=es"
         forecast_response = requests.get(forecast_url)
         forecast_response.raise_for_status()
@@ -107,7 +90,6 @@ def get_weather_narrative():
         
         processed_forecast = forecast_list[:5]
 
-        # --- 4. DEVOLVER LA RESPUESTA COMBINADA ---
         return jsonify({
             'narrative': narrative,
             'forecast': processed_forecast
@@ -115,12 +97,11 @@ def get_weather_narrative():
 
     except requests.exceptions.HTTPError as err:
         if err.response.status_code == 404:
-            return jsonify({'error': f'No se pudo encontrar la ciudad: {city}. Por favor, verifica el nombre.'}), 404
+            return jsonify({'error': f'No se pudo encontrar la ciudad: {city}.'}), 404
         return jsonify({'error': f'Error al obtener los datos del tiempo: {str(err)}'}), 500
     except Exception as e:
         return jsonify({'error': f'Ha ocurrido un error inesperado: {str(e)}'}), 500
 
-# --- RUTA PARA LA NARRATIVA DIARIA ---
 @app.route('/get_daily_narrative', methods=['POST'])
 def get_daily_narrative():
     try:
@@ -138,22 +119,19 @@ def get_daily_narrative():
         prompt_base = "Actúa como un meteorólogo carismático para 'eltiempo.ai'. Crea una narrativa breve (30-40 palabras) sobre la previsión del tiempo."
         
         prompt_modifiers = {
-            'alegre': "Usa un tono entusiasta y optimista sobre lo que se puede esperar.",
-            'poetico': "Describe la previsión de forma lírica, con metáforas y un lenguaje evocador.",
-            'tecnico': "Sé preciso y educativo, explicando por qué se espera ese tiempo.",
-            'sarcástico': "Utiliza un humor irónico sobre la previsión. Por ejemplo, si va a llover, 'prepárense para un día emocionante... bajo techo'.",
-            'para_ninos': "Explica la previsión como si hablaras con un niño, usando ejemplos sencillos y divertidos."
+            'alegre': "Usa un tono entusiasta y optimista.",
+            'poetico': "Describe la previsión de forma lírica.",
+            'tecnico': "Sé preciso y educativo.",
+            'sarcástico': "Utiliza un humor irónico.",
+            'para_ninos': "Explica la previsión como si hablaras con un niño."
         }
         prompt_modifier = prompt_modifiers.get(personality, prompt_modifiers['alegre'])
 
         full_prompt = f"""
         {prompt_base}
-        
         **Tono a utilizar**: {prompt_modifier}
-
         La previsión para el próximo **{day_name}** indica una temperatura aproximada de **{temp}°C**.
-        El código interno del icono del tiempo es '{icon_code}'. Usa este código para inferir si estará soleado (01d), nublado (03d), lluvioso (10d), etc., pero **nunca menciones el código en tu respuesta final**. Describe el tiempo de forma visual.
-
+        El código interno del icono del tiempo es '{icon_code}'. Usa este código para inferir si estará soleado, nublado, lluvioso, etc., pero **nunca menciones el código en tu respuesta final**.
         Crea la narrativa para ese día futuro. Sé conciso y directo.
         """
         
